@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GPU Graph</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            background: black;
+            color: white;
+            text-align: center;
+            font-family: Arial;
+        }
+
+        canvas {
+            background: #222;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>GPU Temperature Statistics</h2>
+
+<canvas id="chart"></canvas>
+
+<script>
+const ctx = document.getElementById('chart').getContext('2d');
+
+let labels = [];
+let values = [];
+
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'GPU Temp (°C)',
+            data: values,
+            borderColor: 'white',
+            backgroundColor: 'lime',
+            pointBackgroundColor: 'lime',
+            tension: 0
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                min: 35,
+                max: 55,
+                ticks: {
+                    stepSize: 2,   // 🔥 THIS IS THE KEY
+                    color: "white"
+                },
+                grid: {
+                    color: "#333"
+                }
+            },
+            x: {
+                ticks: {
+                    color: "white"
+                },
+                grid: {
+                    color: "#333"
+                }
+            }
+        }
+    }
+});
+
+async function fetchData() {
+    const res = await fetch('/api/gpu-temp');
+    const data = await res.json();
+
+    labels.push(data.time);
+    values.push(data.gpu_temp);
+
+    if (labels.length > 20) {
+        labels.shift();
+        values.shift();
+    }
+
+    chart.update();
+}
+
+setInterval(fetchData, 5000);
+fetchData();
+</script>
+
+</body>
+</html>
