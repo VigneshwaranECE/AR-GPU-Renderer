@@ -1,58 +1,46 @@
 import os
-import subprocess
-import random
-from datetime import datetime, timedelta
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
-# ---------------- GPU FUNCTION ----------------
+# 🔥 store latest GPU data
+latest_data = {
+    "gpu_temp": 0,
+    "time": "",
+    "unit": "°C"
+}
 
-def get_gpu_temperature():
-    try:
-        result = subprocess.check_output(
-            ["nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader,nounits"]
-        )
-        temp = result.decode("utf-8").strip()
-        return int(temp)
+# ✅ RECEIVE DATA FROM YOUR PC
+@app.route('/api/update-gpu', methods=['POST'])
+def update_gpu():
+    global latest_data
 
-    except Exception:
-        # 🔥 Render doesn't support GPU → return random realistic value
-        return random.randint(40, 60)
+    data = request.json
+
+    latest_data = {
+        "gpu_temp": data.get("gpu_temp", 0),
+        "time": data.get("time", ""),
+        "unit": "°C"
+    }
+
+    return jsonify({"status": "updated"})
 
 
-# ---------------- API ----------------
-
+# ✅ SEND DATA TO UNITY
 @app.route('/api/gpu-temp')
 def gpu_temp():
-    try:
-        temp = get_gpu_temperature()
-
-        # ✅ Convert UTC → IST (India Time)
-        current_time = (datetime.utcnow() + timedelta(hours=5, minutes=30)) \
-            .strftime("%I:%M:%S %p")
-
-        return jsonify({
-            "gpu_temp": temp,
-            "unit": "°C",
-            "time": current_time
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return jsonify(latest_data)
 
 
-# ---------------- UI PAGE ----------------
-
+# UI page
 @app.route('/')
 def home():
     return render_template("index.html")
 
 
-# ---------------- RUN ----------------
-
+# RUN
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port)
