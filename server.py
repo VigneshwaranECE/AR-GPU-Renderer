@@ -1,7 +1,7 @@
 import os
 import subprocess
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 
@@ -19,8 +19,9 @@ def get_gpu_temperature():
         return int(temp)
 
     except Exception:
-        # 🔥 If GPU not available (Render), return fake realistic value
-        return random.randint(45, 65)
+        # 🔥 Render doesn't support GPU → return random realistic value
+        return random.randint(40, 60)
+
 
 # ---------------- API ----------------
 
@@ -29,10 +30,12 @@ def gpu_temp():
     try:
         temp = get_gpu_temperature()
 
-        current_time = datetime.now().strftime("%I:%M:%S %p")
+        # ✅ Convert UTC → IST (India Time)
+        current_time = (datetime.utcnow() + timedelta(hours=5, minutes=30)) \
+            .strftime("%I:%M:%S %p")
 
         return jsonify({
-            "gpu_temp": temp,   # ✅ ALWAYS INT NOW
+            "gpu_temp": temp,
             "unit": "°C",
             "time": current_time
         })
@@ -40,11 +43,13 @@ def gpu_temp():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # ---------------- UI PAGE ----------------
 
 @app.route('/')
 def home():
     return render_template("index.html")
+
 
 # ---------------- RUN ----------------
 
