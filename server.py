@@ -3,15 +3,8 @@ from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from datetime import datetime
 
-# ML
-import joblib
-import pandas as pd
-
 app = Flask(__name__)
 CORS(app)
-
-# 🔥 LOAD MODEL
-model = joblib.load("gpu_model.pkl")
 
 latest_data = {
     "gpu_temp": 0,
@@ -45,7 +38,7 @@ def update_gpu():
 
 
 # ===============================
-# 🔥 SEND DATA TO CLIENT (UNITY / BROWSER)
+# 🔥 SEND DATA (NO ML HERE)
 # ===============================
 @app.route('/api/gpu-temp')
 def gpu_temp():
@@ -56,8 +49,7 @@ def gpu_temp():
         return jsonify({
             "gpu_temp": 0,
             "time": "",
-            "status": "OFF",
-            "condition": "OFF"
+            "status": "OFF"
         })
 
     # ❌ DATA TIMEOUT
@@ -67,27 +59,13 @@ def gpu_temp():
         return jsonify({
             "gpu_temp": 0,
             "time": "",
-            "status": "OFF",
-            "condition": "OFF"
+            "status": "OFF"
         })
 
-    # ✅ VALID DATA → ML PREDICTION
-    temp = latest_data["gpu_temp"]
-
-    input_data = pd.DataFrame([[temp]], columns=["temperature"])
-    pred = model.predict(input_data)[0]
-
-    if pred == 0:
-        condition = "GOOD"
-    elif pred == 1:
-        condition = "WARNING"
-    else:
-        condition = "CRITICAL"
-
+    # ✅ ONLY RAW DATA (NO CONDITION)
     return jsonify({
         **latest_data,
-        "status": "ON",
-        "condition": condition
+        "status": "ON"
     })
 
 
