@@ -3,8 +3,15 @@ from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from datetime import datetime
 
+# ML
+import joblib
+import pandas as pd
+
 app = Flask(__name__)
 CORS(app)
+
+# 🔥 LOAD MODEL
+model = joblib.load("gpu_model.pkl")
 
 latest_data = {
     "gpu_temp": 0,
@@ -15,11 +22,16 @@ latest_data = {
 last_update_time = None
 
 
+# ===============================
+# 🔥 RECEIVE DATA FROM SENDER
+# ===============================
 @app.route('/api/update-gpu', methods=['POST'])
 def update_gpu():
     global latest_data, last_update_time
 
-    data = request.json
+    data = request.get_json()
+
+    print("🔥 RECEIVED DATA:", data)  # DEBUG
 
     latest_data = {
         "gpu_temp": data.get("gpu_temp", 0),
@@ -32,32 +44,50 @@ def update_gpu():
     return jsonify({"status": "updated"})
 
 
+# ===============================
+# 🔥 SEND DATA TO CLIENT (UNITY / BROWSER)
+# ===============================
 @app.route('/api/gpu-temp')
 def gpu_temp():
     global last_update_time
 
-    # ❌ No data ever received
+    # ❌ NO DATA RECEIVED
     if last_update_time is None:
         return jsonify({
             "gpu_temp": 0,
             "time": "",
-            "status": "OFF"
+            "status": "OFF",
+            "condition": "OFF"
         })
 
-    # ❌ No recent update → PC OFF
+    # ❌ DATA TIMEOUT
     diff = (datetime.utcnow() - last_update_time).total_seconds()
 
-    if diff > 6:  # 🔥 FAST detection
+    if diff > 6:
         return jsonify({
             "gpu_temp": 0,
             "time": "",
-            "status": "OFF"
+            "status": "OFF",
+            "condition": "OFF"
         })
 
-    # ✅ PC ON
+    # ✅ VALID DATA → ML PREDICTION
+    temp = latest_data["gpu_temp"]
+
+    input_data = pd.DataFrame([[temp]], columns=["temperature"])
+    pred = model.predict(input_data)[0]
+
+    if pred == 0:
+        condition = "GOOD"
+    elif pred == 1:
+        condition = "WARNING"
+    else:
+        condition = "CRITICAL"
+
     return jsonify({
         **latest_data,
-        "status": "ON"
+        "status": "ON",
+        "condition": condition
     })
 
 
@@ -67,5 +97,4 @@ def home():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=5000)
