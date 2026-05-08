@@ -83,6 +83,10 @@ def update_water_data():
 
         day_counter += 1
 
+        # RESET AFTER DAY 6
+        if day_counter > 6:
+            day_counter = 1
+
         day_label = f"Day {day_counter}"
 
         # ----------------------------------------
